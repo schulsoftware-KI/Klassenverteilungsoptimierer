@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klassenverteilungsoptimierer – neue Klassen ausgewogen bilden</title>
+<meta name="description" content="Kostenloses Excel-Makro, das Schülerinnen und Schüler nach Wünschen, Konflikten, Geschlecht und Schulformempfehlung ausgewogen auf Klassen verteilt und die fünf besten Lösungen liefert.">
+<link rel="canonical" href="https://schulsoftware-ki.github.io/Klassenverteilungsoptimierer/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='1' y='1' width='30' height='30' rx='7' fill='%231b2a4a'/%3E%3Crect x='7' y='9' width='8' height='6' rx='1.5' fill='%23dce7f3'/%3E%3Crect x='17' y='9' width='8' height='6' rx='1.5' fill='%23dce7f3'/%3E%3Crect x='7' y='17' width='8' height='6' rx='1.5' fill='%23dce7f3'/%3E%3Crect x='17' y='17' width='8' height='6' rx='1.5' fill='%232e8b57'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --navy:#1b2a4a;
+    --navy-2:#22345c;
+    --steel:#2e5a8a;
+    --seat:#dce7f3;
+    --seat-line:#b9cde6;
+    --paper:#f4f6fa;
+    --ink:#1d2733;
+    --ink-soft:#5a6675;
+    --line:#dde3ec;
+    --green:#2e8b57;
+    --green-dark:#256f46;
+    --red:#c0392b;
+    --amber:#b7791f;
+    --amber-bg:#fdf3e1;
+    --card:#ffffff;
+    --radius:10px;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:"Segoe UI","Segoe UI Web (West European)",Roboto,-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--steel);}
+  h1,h2,h3{line-height:1.2;margin:0;font-weight:600;letter-spacing:-0.01em;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+
+  /* ── Kopf / Blackboard-Leiste ── */
+  .topbar{
+    background:var(--navy);
+    color:#fff;
+    padding:14px 0;
+    border-bottom:3px solid var(--steel);
+  }
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:600;font-size:1.05rem;color:#fff;text-decoration:none;}
+  .brand .mark{
+    width:26px;height:26px;border-radius:6px;flex:0 0 auto;
+    background:linear-gradient(180deg,#3f6aa5,#22345c);
+    border:1px solid #4a75b0;
+  }
+  .topnav a.home{color:#fff;}
+  .topnav a.home::before{content:"← ";}
+  .topnav a{color:#c9d6ea;text-decoration:none;margin-left:22px;font-size:.95rem;}
+  .topnav a:hover{color:#fff;}
+
+  /* ── Hero ── */
+  .hero{padding:64px 0 40px;}
+  .hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;}
+  .eyebrow{
+    text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;font-weight:600;
+    color:var(--steel);margin-bottom:14px;
+  }
+  .hero h1{font-size:2.5rem;margin-bottom:16px;}
+  .hero p.lead{font-size:1.12rem;color:var(--ink-soft);margin:0 0 28px;max-width:38ch;}
+  .cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;}
+  .btn{
+    display:inline-flex;align-items:center;gap:9px;
+    padding:12px 20px;border-radius:8px;font-size:.98rem;font-weight:600;
+    text-decoration:none;border:1px solid transparent;transition:background .15s,transform .05s;
+    font-family:inherit;cursor:pointer;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--green);color:#fff;}
+  .btn-primary:hover{background:var(--green-dark);}
+  .btn-secondary{background:#fff;color:var(--navy);border-color:var(--line);}
+  .btn-secondary:hover{border-color:var(--steel);}
+  .btn-sm{padding:8px 14px;font-size:.9rem;}
+  .btn .ic{font-size:1.05rem;line-height:1;}
+  .platform-note{font-size:.82rem;color:var(--ink-soft);margin-top:14px;}
+
+  /* ── Hero-Signatur: Karte mit Tafel-Kopf ── */
+  .plan{
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;box-shadow:0 12px 30px rgba(27,42,74,.08);
+  }
+  .plan .board{
+    background:var(--navy);color:#fff;text-align:center;font-size:.62rem;font-weight:600;
+    letter-spacing:.16em;padding:6px;border-radius:5px;margin-bottom:14px;
+  }
+  .seat{
+    background:var(--seat);border:1px solid var(--seat-line);border-radius:6px;
+    height:34px;display:flex;align-items:center;justify-content:center;
+    font-size:.62rem;color:var(--steel);font-weight:600;
+  }
+  .seat.free{background:#f5f7fa;color:#aeb8c6;border-style:dashed;}
+  .seat.warn{background:#f9dcd8;border-color:var(--red);color:var(--red);}
+  .seat.ok{background:#dcefe3;border-color:#9fcfb1;color:var(--green-dark);}
+
+  /* ── Sektionen ── */
+  section{padding:56px 0;border-top:1px solid var(--line);}
+  .section-head{max-width:60ch;margin-bottom:36px;}
+  .section-head .eyebrow{margin-bottom:10px;}
+  .section-head h2{font-size:1.7rem;margin-bottom:10px;}
+  .section-head p{color:var(--ink-soft);margin:0;}
+
+  /* ── Funktionen ── */
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  .features.four{grid-template-columns:repeat(4,1fr);}
+  .feature{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px;
+  }
+  .feature h3{font-size:1.05rem;margin-bottom:8px;color:var(--navy);}
+  .feature p{margin:0;color:var(--ink-soft);font-size:.94rem;}
+  .tag{
+    display:inline-block;font-size:.66rem;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--steel);background:#eaf1f9;
+    border-radius:5px;padding:3px 8px;margin-bottom:12px;
+  }
+
+  /* ── Schritte / Voraussetzungen ── */
+  .install{display:grid;grid-template-columns:1.2fr .8fr;gap:36px;align-items:start;}
+  .steps{counter-reset:step;list-style:none;padding:0;margin:0;}
+  .steps li{position:relative;padding:0 0 18px 46px;color:var(--ink-soft);}
+  .steps li::before{
+    counter-increment:step;content:counter(step);
+    position:absolute;left:0;top:-2px;width:30px;height:30px;border-radius:50%;
+    background:var(--navy);color:#fff;font-weight:600;font-size:.9rem;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .steps li b{color:var(--ink);}
+  .req{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;}
+  .req h3{font-size:1rem;color:var(--navy);margin-bottom:12px;}
+  .req dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:.92rem;}
+  .req dt{color:var(--ink-soft);}
+  .req dd{margin:0;font-weight:600;}
+  .req + .req{margin-top:20px;}
+  code{font-family:Consolas,"Cascadia Mono",ui-monospace,monospace;font-size:.88em;background:#eaf1f9;color:var(--navy);padding:1px 5px;border-radius:4px;}
+
+  /* ── Hinweise ── */
+  .notes{list-style:none;padding:0;margin:0;display:grid;gap:12px;}
+  .notes li{
+    background:#fff;border:1px solid var(--line);border-left:4px solid var(--amber);
+    border-radius:var(--radius);padding:14px 18px;color:var(--ink-soft);font-size:.94rem;
+  }
+  .notes li b{color:var(--ink);}
+  .callout{
+    background:var(--amber-bg);border:1px solid #efd3a3;border-radius:var(--radius);
+    padding:14px 18px;font-size:.92rem;color:#6b4a12;margin-top:28px;
+  }
+
+  /* ── Fuß ── */
+  footer{background:var(--navy);color:#c9d6ea;padding:32px 0;font-size:.9rem;}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  footer a{color:#fff;}
+
+  /* ── Hero-Signatur: stilisierte Klassenverteilung ── */
+  .klassen{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .klasse{display:grid;gap:6px;}
+  .klasse .kopf{
+    text-align:center;font-size:.72rem;font-weight:600;color:var(--navy);
+    border-bottom:2px solid var(--seat-line);padding-bottom:4px;margin-bottom:2px;
+  }
+  .klasse .seat{height:26px;}
+  .klasse .seat.pair{background:#dcefe3;border-color:#9fcfb1;color:var(--green-dark);}
+  .klasse .stat{
+    text-align:center;font-size:.6rem;color:var(--ink-soft);line-height:1.35;
+    border-top:1px solid var(--line);padding-top:6px;margin-top:2px;
+  }
+  .klasse .stat b{display:block;font-size:.8rem;color:var(--navy);}
+  .legend{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:.62rem;color:var(--ink-soft);}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .legend .l-pair{background:#dcefe3;border:1px solid #9fcfb1;}
+  .legend .l-sep{background:#f9dcd8;border:1px solid var(--red);}
+
+  /* ── Rechenweg ── */
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:fl;}
+  .flow div{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+  .flow div::before{
+    counter-increment:fl;content:counter(fl);display:inline-flex;align-items:center;justify-content:center;
+    width:26px;height:26px;border-radius:50%;background:var(--seat);color:var(--steel);
+    font-weight:600;font-size:.8rem;margin-bottom:10px;
+  }
+  .flow b{display:block;color:var(--navy);margin-bottom:4px;}
+  .flow span{color:var(--ink-soft);font-size:.9rem;}
+  @media (max-width:860px){.flow{grid-template-columns:1fr 1fr;}}
+  @media (max-width:520px){.flow{grid-template-columns:1fr;}}
+  /* ── Responsiv ── */
+  @media (max-width:860px){
+    .hero{padding:40px 0 32px;}
+    .hero .wrap{grid-template-columns:1fr;gap:32px;}
+    .hero h1{font-size:2rem;}
+    .features,.features.four,.progs{grid-template-columns:1fr 1fr;}
+    .install,.contact{grid-template-columns:1fr;}
+    .topnav a:not(.home){display:none;}
+    .topnav a.home{margin-left:0;}
+  }
+  @media (max-width:520px){
+    .wrap{padding:0 18px;}
+    .features,.features.four,.progs{grid-template-columns:1fr;}
+    .hero h1{font-size:1.7rem;}
+    section{padding:44px 0;}
+  }
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="mark"></span>Klassenverteilungsoptimierer</div>
+    <nav class="topnav">
+      <a class="home" href="https://schulsoftware-ki.github.io/">Alle Programme</a>
+      <a href="#funktionen">Funktionen</a>
+      <a href="#ablauf">Ablauf</a>
+      <a href="https://github.com/schulsoftware-KI/Klassenverteilungsoptimierer">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Excel-Makro für die Klassenbildung</div>
+      <h1>Neue Klassen bilden – ausgewogen und mit Blick auf Wünsche.</h1>
+      <p class="lead">Das Makro verteilt Schülerinnen und Schüler automatisch auf Klassen, erfüllt möglichst viele Wünsche, trennt Konfliktpaare und hält Größe, Geschlecht und Schulformempfehlung im Gleichgewicht.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="Klassenverteilungsoptimierer%20V5.xlsm" download>
+          <span class="ic">↓</span> Excel-Datei herunterladen
+        </a>
+        <a class="btn btn-secondary" href="Gebrauchsanleitung_Klassenverteilungsoptimierer_V5.docx" download>
+          <span class="ic">📄</span> Anleitung (Word)
+        </a>
+      </div>
+      <p class="platform-note">Für Microsoft Excel mit aktivierten Makros · keine Installation nötig.</p>
+    </div>
+
+    <!-- Signatur: vier ausgewogene Klassen -->
+    <div class="plan" aria-hidden="true">
+      <div class="board">NEUE KLASSEN · JAHRGANG 5</div>
+      <div class="klassen">
+        <div class="klasse">
+          <div class="kopf">5a</div>
+          <div class="seat pair">♥</div><div class="seat pair">♥</div>
+          <div class="seat"></div><div class="seat"></div><div class="seat"></div>
+          <div class="stat"><b>27</b>13 m · 14 w</div>
+        </div>
+        <div class="klasse">
+          <div class="kopf">5b</div>
+          <div class="seat"></div><div class="seat warn">✕</div>
+          <div class="seat pair">♥</div><div class="seat pair">♥</div><div class="seat"></div>
+          <div class="stat"><b>27</b>14 m · 13 w</div>
+        </div>
+        <div class="klasse">
+          <div class="kopf">5c</div>
+          <div class="seat"></div><div class="seat"></div>
+          <div class="seat warn">✕</div><div class="seat"></div><div class="seat"></div>
+          <div class="stat"><b>26</b>13 m · 13 w</div>
+        </div>
+        <div class="klasse">
+          <div class="kopf">5d</div>
+          <div class="seat"></div><div class="seat"></div>
+          <div class="seat pair">♥</div><div class="seat pair">♥</div><div class="seat"></div>
+          <div class="stat"><b>27</b>14 m · 13 w</div>
+        </div>
+      </div>
+      <div class="legend"><span><i class="l-pair"></i>Wunsch erfüllt</span><span><i class="l-sep"></i>Konfliktpaar getrennt</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Funktionen ── -->
+<section id="funktionen">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Was das Makro kann</div>
+      <h2>Alle Kriterien gleichzeitig im Blick</h2>
+      <p>Jedes Kriterium hat eine einstellbare Gewichtung. Das Makro sucht die Verteilung, die alle zusammen am besten erfüllt – für bis zu rund 120 Schülerinnen und Schüler und bis zu sieben Klassen.</p>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <span class="tag">Wünsche</span>
+        <h3>Zusammen in eine Klasse</h3>
+        <p>Bis zu zwei Wunschpartner je Kind. Gegenseitige Wünsche werden zu Gruppen zusammengefasst.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Konflikte</span>
+        <h3>Gezielt trennen</h3>
+        <p>Bis zu zwei Konfliktpartner je Kind, die besser nicht in dieselbe Klasse kommen sollen.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Ausgewogenheit</span>
+        <h3>Geschlecht und Schulform</h3>
+        <p>Mädchen und Jungen sowie die Schulformempfehlungen (RS, RS/Gy, Gy) werden gleichmäßig verteilt.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Klassengröße</span>
+        <h3>Gleich große Klassen</h3>
+        <p>Die Klassen bleiben innerhalb eines einstellbaren Toleranzbereichs gleich groß.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Markierung</span>
+        <h3>Besondere Aufmerksamkeit</h3>
+        <p>Als „rot“ markierte Kinder werden auf die Klassen gestreut, statt sich in einer zu sammeln.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Fixierung</span>
+        <h3>Feste Zuordnungen</h3>
+        <p>Einzelne Kinder fest einer Klasse zuordnen – oder die größten Wunschketten automatisch fixieren lassen.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Gewichtung</span>
+        <h3>Prioritäten einstellen</h3>
+        <p>Im Blatt „Suchtiefe“ legen Sie fest, wie stark jedes Kriterium zählt und wie gründlich gesucht wird.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Ergebnis</span>
+        <h3>Fünf Lösungen</h3>
+        <p>Die fünf besten Verteilungen landen in eigenen Blättern (L1–L5) und lassen sich direkt vergleichen.</p>
+      </div>
+      <div class="feature">
+        <span class="tag">Prüfung</span>
+        <h3>Fehler sichtbar machen</h3>
+        <p>Falsch geschriebene Namen werden rot markiert; nicht erfüllte Wünsche und Konflikte stehen in eigenen Blättern.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Rechenweg ── -->
+<section id="rechenweg">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">So rechnet das Makro</div>
+      <h2>In vier Stufen zur besten Verteilung</h2>
+    </div>
+    <div class="flow">
+      <div><b>Gruppen bilden</b><span>Kinder mit gegenseitigen Wünschen werden zu Gruppen zusammengefasst.</span></div>
+      <div><b>Startlösung</b><span>Eine erste, schon brauchbare Verteilung wird erzeugt.</span></div>
+      <div><b>Verbessern</b><span>Tausche und Verschiebungen werden übernommen, solange sie das Ergebnis verbessern.</span></div>
+      <div><b>Neu starten</b><span>Mehrere Durchläufe mit neuen Startlösungen; die fünf besten bleiben erhalten.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Ablauf ── -->
+<section id="ablauf">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Loslegen</div>
+      <h2>Von der Schülerliste zu den neuen Klassen</h2>
+      <p>Alles läuft in einer Excel-Arbeitsmappe. Die Makros starten Sie über Entwicklertools → Makros.</p>
+    </div>
+    <div class="install">
+      <ol class="steps">
+        <li><b>Datei herunterladen und freigeben.</b> Rechtsklick auf die Datei → Eigenschaften → Haken bei „Zulassen“. Sonst blockiert Office die Makros.</li>
+        <li><b>Schülerdaten eintragen.</b> Im Blatt „alle“ Name, Vorname, Geschlecht, Schulformempfehlung sowie Wünsche und Konflikte erfassen.</li>
+        <li><b>Einstellungen wählen.</b> Im Blatt „Suchtiefe“ die Klassenanzahl und die Gewichtungen festlegen.</li>
+        <li><b>Namen prüfen.</b> <code>UngueltigeNamenRot</code> ausführen und rot markierte Namen korrigieren, bis keine mehr übrig sind.</li>
+        <li><b>Optimieren.</b> <code>Klassen_Optimierer</code> starten, die Lösungen im Blatt „Analyse“ vergleichen und die beste auswählen.</li>
+        <li><b>Nachbearbeiten.</b> Bei Bedarf von Hand umsetzen und mit <code>AnalyseUndKonflikteNeu</code> neu auswerten.</li>
+      </ol>
+      <div>
+        <div class="req">
+          <h3>Voraussetzungen</h3>
+          <dl>
+            <dt>Programm</dt><dd>Microsoft Excel</dd>
+            <dt>Makros</dt><dd>müssen zugelassen sein</dd>
+            <dt>Umfang</dt><dd>bis ca. 120 Kinder, bis 7 Klassen</dd>
+            <dt>Installation</dt><dd>keine – eine .xlsm-Datei</dd>
+            <dt>Internet</dt><dd>nicht erforderlich</dd>
+          </dl>
+        </div>
+        <div class="req">
+          <h3>Unterlagen</h3>
+          <dl>
+            <dt>Anleitung</dt><dd><a href="Gebrauchsanleitung_Klassenverteilungsoptimierer_V5.docx" download>ausführlich (Word)</a></dd>
+            <dt>Kurzfassung</dt><dd><a href="Kurzanleitung_Klassenverteilungsoptimierer_V5.docx" download>Kurzanleitung (Word)</a></dd>
+            <dt>Quellcode</dt><dd><a href="https://github.com/schulsoftware-KI/Klassenverteilungsoptimierer">auf GitHub</a></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="callout"><b>Datenschutz:</b> Die Arbeitsmappe enthält personenbezogene Daten von Schülerinnen und Schülern. Speichern Sie die ausgefüllte Datei nur an dafür freigegebenen Orten.</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Klassenverteilungsoptimierer · Teil der <a href="https://schulsoftware-ki.github.io/">Kostenlosen Schulsoftware</a></span>
+    <span><a href="https://schulsoftware-ki.github.io/#kontakt">Kontakt</a> · <a href="https://github.com/schulsoftware-KI/Klassenverteilungsoptimierer">Projekt auf GitHub</a></span>
+  </div>
+</footer>
+
+<!-- Besucherzählung (GoatCounter) -->
+<script data-goatcounter="https://stundenplan.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+</body>
+</html>
